@@ -9,26 +9,26 @@ import SwiftUI
 import SwiftData
 
 struct EntryView: View {
-
     // Props to accept the plate number and captured image from the PlateScannerView
     @Binding var plateNumber: String
     @Binding var plateImage: UIImage?
-    @StateObject private var viewModel = objectEntryViewModel()
     @Environment(\.modelContext) var modelContext
-
     @Environment(\.dismiss) private var dismiss
     
+    // Use a StateObject to initialize the ViewModel, but don't do it here
+    @StateObject private var viewModel: objectEntryViewModel
+    
     init(plateNumber: Binding<String>, plateImage: Binding<UIImage?>) {
-            _plateNumber = plateNumber
-            _plateImage = plateImage
-            
-            
-            // Initialize the viewModel with the bound values
-            _viewModel = StateObject(wrappedValue: objectEntryViewModel(
-                initialPlateNumber: plateNumber.wrappedValue,
-                initialImage: plateImage.wrappedValue,
-            ))
-        }
+        _plateNumber = plateNumber
+        _plateImage = plateImage
+        
+        // Create the ViewModel without modelContext initially
+        // We'll set it in onAppear
+        _viewModel = StateObject(wrappedValue: objectEntryViewModel(
+            initialPlateNumber: plateNumber.wrappedValue,
+            initialImage: plateImage.wrappedValue
+        ))
+    }
 
     enum Field: Hashable {
         case plateNumber
@@ -143,7 +143,7 @@ struct EntryView: View {
                         viewModel.platNumber = plateNumber
                         viewModel.image = plateImage
                         
-                        viewModel.saveEntry()
+                        viewModel.saveEntry(using: modelContext)
                         dismiss()
                     }) {
                         Text("Simpan")
@@ -179,6 +179,10 @@ struct EntryView: View {
                 }
             }
             .navigationBarBackButtonHidden(true)
+            .onAppear {
+                // Set the model context after the view appears
+                viewModel.loadCars(from: modelContext)
+            }
         }
         .background(Color.white)
     }
@@ -216,5 +220,7 @@ struct EntryView: View {
 }
 
 #Preview {
-//    EntryView(plateNumber: "B1234ABC", plateImage: UIImage(named: "example"))
+    let modelContainer = try! ModelContainer(for: Car.self, Entry.self)
+    return EntryView(plateNumber: .constant("B1234ABC"), plateImage: .constant(nil))
+        .modelContainer(modelContainer)
 }

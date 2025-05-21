@@ -5,8 +5,7 @@ import UIKit
 import PhotosUI
 
 class objectEntryViewModel: ObservableObject {
-    @Environment(\.modelContext) var modelContext
-    @Query var cars: [Car]
+    @Published var cars: [Car] = []
     
     @Published var platNumber: String = "B 2345 C"
     @Published var image: UIImage? = nil
@@ -33,14 +32,25 @@ class objectEntryViewModel: ObservableObject {
         case others
     }
     
-    func saveEntry() {
+    // Add method to load cars using a provided ModelContext
+    func loadCars(from modelContext: ModelContext) {
+        let descriptor = FetchDescriptor<Car>()
+        self.cars = (try? modelContext.fetch(descriptor)) ?? []
+    }
+    
+    // Update saveEntry to accept a ModelContext parameter
+    func saveEntry(using modelContext: ModelContext) {
         let trimmedPlate = platNumber.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         let imageDataToSave = image?.jpegData(compressionQuality: 0.7)
 
-        if let existingCar = cars.first(where: { $0.plate.uppercased() == trimmedPlate }) {
+        if let existingCar = cars.first(where: { car in
+            let carPlate = car.plate.uppercased()
+            return carPlate == trimmedPlate
+        }) {
+            
             let newEntry = Entry(category: category,
-                                time: Date.now,
-                                note: catatan)
+                               time: Date.now,
+                               note: catatan)
             
             if let imageData = imageDataToSave {
                 newEntry.image = imageData
@@ -51,8 +61,8 @@ class objectEntryViewModel: ObservableObject {
         } else {
             let newCar = Car(plate: trimmedPlate, type: selectedVehicleType.rawValue)
             let newEntry = Entry(category: category,
-                                time: Date.now,
-                                note: catatan)
+                               time: Date.now,
+                               note: catatan)
             
             if let imageData = imageDataToSave {
                 newEntry.image = imageData
@@ -62,5 +72,10 @@ class objectEntryViewModel: ObservableObject {
             modelContext.insert(newCar)
             try? modelContext.save()
         }
+    }
+    
+    // Add method to refresh car data
+    func refreshCars(using modelContext: ModelContext) {
+        loadCars(from: modelContext)
     }
 }
